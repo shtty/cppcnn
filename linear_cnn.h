@@ -95,12 +95,10 @@ public:
 	inline layer & front() { return *n_layers.front(); }
 	inline layer & back() { return *n_layers.back(); }
 
-	void push_back(layer &newLayer) { layer *temp = new layer; *temp = newLayer; n_layers.push_back(temp); }
-	void push_back(conv  &newLayer) { conv  *temp = new conv ; *temp = newLayer; n_layers.push_back(temp); }
-	void push_back(relu  &newLayer) { relu  *temp = new relu ; *temp = newLayer; n_layers.push_back(temp); }
-	void push_back(pool  &newLayer) { pool  *temp = new pool ; *temp = newLayer; n_layers.push_back(temp); }
-	void push_back(c4to2x2 &newLayer) { c4to2x2 *temp = new c4to2x2; *temp = newLayer; n_layers.push_back(temp); }
-	void push_back(sqr_error  &newLayer) { sqr_error  *temp = new sqr_error; *temp = newLayer;  n_layers.push_back(temp); }
+	template<class T>
+	void push_back(T &newlayer) { T *temp = new T; *temp = newlayer; n_layers.push_back(temp); }
+
+
 	void pop_back() { 
 		if (n_layers.size() > 0) {
 			delete n_layers.back();
