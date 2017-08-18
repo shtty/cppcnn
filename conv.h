@@ -9,6 +9,7 @@ using namespace std;
 class conv : public layer
 {
 private:
+	static int n_conv_count;
 #ifdef SHTTY_CUDNN
 	cudnnHandle_t                gpu_handle;
 	cudnnFilterDescriptor_t	     gpu_filterDesc;
@@ -27,6 +28,9 @@ private:
 protected:
 public:
 	string layer_type() { return "conv"; }
+	float   n_d;    // gradient step size
+	size2d  n_pad;
+	size2d  n_stride;
 	float4d n_weights;
 	float1d n_bias;
 	float1d n_bias_gradient;
@@ -43,8 +47,9 @@ public:
 	void save_init(ofstream &myfile);
 	void load_weights(ifstream &myfile);
 	void save_weights(ofstream &myfile);
-	void set_filter_NCHW(int n, int c, int h, int w, std::mt19937 rng = std::mt19937(0));
-	void set_filter_NCHW(float min = 0.001f, float max = 0.001f, std::mt19937 rng = std::mt19937(0));
+	void n_weights_bias_set(int n, int c, int h, int w );
+	void n_weights_set(string init_method, std::mt19937 &rng = float4d::n_random_seed);
+	void set_gradient_step_size(float d) { n_d = d; }
 	void print(bool print_n_rsp = false);
 	
 	double forward_pass();

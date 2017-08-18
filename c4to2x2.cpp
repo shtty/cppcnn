@@ -7,7 +7,8 @@ c4to2x2::c4to2x2(void)
 }
 
 
-c4to2x2::~c4to2x2(void){}
+c4to2x2::~c4to2x2(void){
+}
 
 void c4to2x2::load_init(ifstream &myfile, string layer_type ) {
 	if (layer_type == "") {

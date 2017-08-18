@@ -3,6 +3,8 @@
 class relu : public layer
 {
 public:
+	float   n_leak;
+
 	string layer_type() { return "relu"; }
 	relu(void);
 	~relu(void);
@@ -14,7 +16,7 @@ public:
 
 	void print(bool print_n_rsp = false) {
 		layer::print(print_n_rsp);
-		cout << "relu leak " << leak << endl;
+		cout << "relu leak " << n_leak << endl;
 	}
 
 };

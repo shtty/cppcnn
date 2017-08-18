@@ -15,12 +15,9 @@ public:
 	}
 
 	double forward_pass();
-
-	double backward_pass_cpu(layer *rsps);
-	void backward_pass(layer *rsps );
-	void backward_pass_mask( layer *rsps, float mask_value );
-
 	double backward_pass();
+
+	void backward_pass_mask( layer *rsps, float mask_value );
 	void backward_pass_mask(float mask_value);
 	void print(bool print_n_rsp = false) {
 		layer::print(print_n_rsp);

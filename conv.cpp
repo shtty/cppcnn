@@ -1,8 +1,13 @@
-#include "conv.h"
+﻿#include "conv.h"
 
 conv::conv(void)
 {
 	n_name = "conv";
+	n_pad.h = 0;
+	n_pad.w = 0;
+	n_stride.h = 1;
+	n_stride.w = 1;
+	n_d = 0.01f;
 #ifdef SHTTY_CUDNN
 	cudnnCreate(                     &gpu_handle);
 	cudnnCreateFilterDescriptor(     &gpu_filterDesc);
@@ -97,15 +102,14 @@ void conv::save_init(ofstream &myfile) {
 	myfile << "weight_dim " << 4 << " size_NCHW " << n_weights.n() << " " << n_weights.c() << " " << n_weights.h() << " " << n_weights.w() << endl;
 
 }
-void conv::set_filter_NCHW(int n, int c, int h, int w, std::mt19937 rng) {
+void conv::n_weights_bias_set(int n, int c, int h, int w) {
 	n_weights.resize(n,c,h,w);
+	n_weights.set("xavier");
 	n_bias.resize(n);
-	n_weights.set(-0.001f, 0.001f, rng); // initialization is important factor....
 	n_bias.set(0);
 }
-void conv::set_filter_NCHW(float min, float max, std::mt19937 rng ) {
-	n_weights.set(min, max, rng); // initialization is important factor....
-	n_bias.set(0);
+void conv::n_weights_set(string init_method, std::mt19937 &rng) {
+	n_weights.set(init_method, rng);
 }
 void conv::load_weights(ifstream &myfile) {
 	
@@ -118,7 +122,7 @@ void conv::load_weights(ifstream &myfile) {
 	for (int n = 0; n < n_bias.size(); n++ ) {
 		myfile >> n_bias(n);
 	}
-
+	int stop = 1;
 }
 void conv::save_weights(ofstream &myfile) {
 	myfile << endl << std::scientific;
@@ -200,6 +204,7 @@ void	conv::forward_pass_cpu(layer *rsps) {
 		n_rsp(pn, pc, ph, pw) += n_bias(pc);
 	}}}}
 	int stop = 1;
+	
 }
 double conv::backward_pass() {
 	if (n_use_gpu) {
@@ -209,6 +214,21 @@ double conv::backward_pass() {
 		backward_pass_cpu(n_in1, n_out1);
 	}
 	update_bias(n_out1);
+	
+	////// set max and min gradients 
+	std::uniform_real_distribution<float> uniform_dist(0, 1);
+	//std::uniform_real_distribution<float> uniform_dist2(-1, 1);
+	for (int p = 0; p < n_weights.nchw(); p++) {
+		if ( n_d*n_weights_gradient(p) > 1 ) {
+			n_weights_gradient(p) = uniform_dist(float4d::n_random_seed) / n_d;
+		}
+		if (n_d*n_weights_gradient(p) < -1) {
+			n_weights_gradient(p) = -uniform_dist(float4d::n_random_seed) / n_d;
+		}
+		//if ( fabs(n_weights_gradient(p)) < 0.25f ) {
+		//	n_weights_gradient(p) = float(uniform_dist2(n_random_seed))*0.25f;
+		//}
+	}
 	////// update filter weights
 	for (int p = 0; p < n_weights.nchw(); p++) {
 		n_weights(p) = n_weights(p) - n_d*n_weights_gradient(p);
@@ -240,10 +260,12 @@ void		conv::update_gradient_cpu(layer *inlayer, layer *outlayer) {
 			int rsp_w = pw*stride_w + ww - pad_w;
 			float rsp_value = inlayer->n_rsp.at(pn, wc, rsp_h, rsp_w);
 			n_weights_gradient(pc, wc, n_weights.h() - 1 - wh, n_weights.w() - 1 - ww) += (outlayer->n_dif(pn, pc, ph, pw))*rsp_value;
+			//n_weights_gradient(pc, wc, wh, ww) += (outlayer->n_dif(pn, pc, ph, pw))*rsp_value;
 
 		}}}
 
 	}}}}
+
 }
 void	conv::backward_pass_cpu(layer *inlayer, layer *outlayer) {
 	int pad_h = n_weights.h() / 2;
@@ -287,9 +309,18 @@ void	conv::update_bias(layer *outlayer ) {
 	for (int pw = 0; pw < n_rsp.w(); pw++) { // per each x
 		n_bias_gradient(pc) += outlayer->n_dif(pn, pc, ph, pw);
 	}}}}
+	
+	std::uniform_real_distribution<float> uniform_dist(0, 1);
+	for (int p = 0; p < n_bias_gradient.size(); p++) {
+		if (n_d*n_bias_gradient(p) > 1) {
+			n_bias_gradient(p) = uniform_dist(float4d::n_random_seed) / n_d;
+		}
+		if (n_d*n_bias_gradient(p) < -1) {
+			n_bias_gradient(p) = -uniform_dist(float4d::n_random_seed) / n_d;
+		}
+	}
 	// update bias 
-	int tsize = n_bias_gradient.size();
-	for (int p = 0; p < tsize; p++) {
+	for (int p = 0; p < n_bias.size(); p++) {
 		n_bias(p) = n_bias(p) - n_d*n_bias_gradient(p);
 	}
 }

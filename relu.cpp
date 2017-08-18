@@ -4,7 +4,7 @@
 relu::relu(void)
 {
 	n_name = "relu";
-	leak = 0;
+	n_leak = 0;
 }
 
 
@@ -18,12 +18,12 @@ void relu::load_init(ifstream &myfile, string layer_type ) {
 	}
 	//relu precious 0.000000 leak 0.000000
 	string stemp;
-	myfile >> stemp; // "leak"
-	myfile >> leak;
+	myfile >> stemp; // "n_leak"
+	myfile >> n_leak;
 }
 void relu::save_init(ofstream &myfile) {
 	myfile << endl;
-	myfile << "relu leak " << leak << endl;
+	myfile << "relu leak " << n_leak << endl;
 }
 
 double relu::forward_pass() {
@@ -34,7 +34,7 @@ double relu::forward_pass() {
 			n_rsp(t) = n_in1->n_rsp(t);
 		}
 		else {
-			n_rsp(t) = n_in1->n_rsp(t)*leak;
+			n_rsp(t) = n_in1->n_rsp(t)*n_leak;
 		}
 	}
 	int stop = 1;
@@ -49,7 +49,7 @@ double relu::backward_pass() {
 			n_dif(t) = n_out1->n_dif(t);
 		}
 		else {
-			n_dif(t) = n_out1->n_dif(t)*leak;
+			n_dif(t) = n_out1->n_dif(t)*n_leak;
 		}
 	}
 	//cout << "relu partial diff size NCHW: " << n_dif.n() << " " << n_dif.c() << " " << n_dif.h() << " " << n_dif.w() << endl;

@@ -1,0 +1,159 @@
+#pragma once
+#define SHTTY_CUDNN
+
+#include <stdio.h>
+#include <tchar.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <iomanip>
+#include <random>
+#include <vector>
+#include <algorithm>
+#include <math.h>
+using namespace std;
+
+#define PI 3.14159265
+
+class size4d {
+public:
+	int n, c, h, w;
+	size4d(int in = 0, int ic = 0, int ih = 0, int iw = 0) { set(in, ic, ih, iw); }
+	inline void set(int in, int ic, int ih, int iw) {
+		n = in; c = ic;  h = ih; w = iw;
+	}
+	inline int nchw() { return  n*c*h*w; }
+	inline bool operator!=(size4d in) {
+		if (n == in.n && c == in.c && h == in.h && w == in.w) { return true; }
+		return false;
+	}
+};
+class size2d {
+public:
+	int w, h;
+	size2d() { w = h = 0; }
+	inline void set(int ih, int iw) { h = ih; w = iw; }
+};
+class float1d {
+private:
+	int n_size;
+	vector<float> p_v;
+public:
+	float1d() {}
+	~float1d() {}
+	inline void resize(int new_size) {
+		if (new_size != p_v.size()) {
+			p_v.resize(new_size);
+		}
+		n_size = new_size;
+	}
+	inline void set(float v) { std::fill(p_v.begin(), p_v.end(), v); }
+	inline int size() { return n_size; }
+	inline float & at(int n) { return p_v[n]; }
+	inline float & operator()(int n) { return p_v[n]; }
+	void print(bool print_values = false) {
+		cout << "size1d " << n_size << ": ";
+		if (print_values) {
+			for (int i = 0; i < n_size; i++) { cout << at(i) << " "; }
+		}
+		cout << endl;
+	}
+	void set(float min, float max, std::mt19937 &rng = std::mt19937(0)) {
+		std::uniform_real_distribution<float> uniform_dist(min, max);
+		for (int p = 0; p < n_size; p++) {
+			p_v[p] = uniform_dist(rng);
+		}
+	}
+};
+
+class float4d { // N C H W
+private:
+	size4d n_size;
+	vector<float> p_v;
+	int xw, xwxh, xwxhxc, xwxhxcxn;
+	float n_zero;
+public:	
+	static std::mt19937 n_random_seed;
+	float4d(int n = 0, int c = 0, int h = 0, int w = 0) { 
+		resize(n,c,h,w); 
+	}
+	float4d(size4d s) { 
+		resize(s); 
+	}
+
+	inline void resize(int n, int c, int h, int w) { 
+		n_size.set( n, c, h, w);
+		resize(n_size);
+	}
+	inline void resize(size4d insize ) {
+		n_size = insize;
+		if( p_v.size() != n_size.nchw() ) {
+			p_v.resize(n_size.nchw());
+		}
+		xw       =        n_size.w;
+		xwxh     = xw    *n_size.h;
+		xwxhxc   = xwxh  *n_size.c;
+		xwxhxcxn = xwxhxc*n_size.n;
+	}
+	
+	inline int nchw2idx(int n, int c, int h, int w) { return n*xwxhxc + c*xwxh + h*xw + w; }
+	inline float & at(int n, int c, int h, int w) {
+		if (h < 0 || w < 0 || h >= n_size.h || w >= n_size.w) {
+			n_zero = 0;
+			return n_zero; //cout << "returninging 0s ";
+		}
+		else {
+			return p_v[nchw2idx(n, c, h, w)];
+		}
+	}
+	inline float & at(int p) { return p_v[p]; }
+	inline float & operator()(int p) { return p_v[p]; }
+	inline float & operator[](int p) { return p_v[p]; }
+	inline float & operator()(int n, int c, int h, int w) { return p_v[nchw2idx(n, c, h, w)]; }
+	inline float & operator()(int n, int p ) { return p_v[n*xwxhxc + p]; }
+	float4d & operator+=(float v) {
+		for (int i = 0; i < xwxhxcxn; i++) {
+			p_v[i] += v;
+		}
+		return *this;
+	}
+
+	inline size4d size() { return n_size; }
+	inline int nchw() { return xwxhxcxn; }
+	inline int  chw() { return xwxhxc  ; }
+	inline int w() { return n_size.w;  }
+	inline int h() { return n_size.h; }
+	inline int c() { return n_size.c; }
+	inline int n() { return n_size.n; }
+	
+	inline void set(float value, int nidx) {
+		std::fill(p_v.begin() + nidx*xwxhxc, p_v.begin() + nidx*xwxhxc + xwxhxc, value);
+	}
+	inline void set(float value, int nidx, int cidx) {
+		std::fill(p_v.begin() + nidx*xwxhxc + cidx*xwxh, p_v.begin() + nidx*xwxhxc + cidx*xwxh + xwxh, value);
+	}
+	inline void set(float value) { 
+		std::fill(p_v.begin(), p_v.end(), value); 
+	}
+	inline float max() {
+		return *max_element(p_v.begin(), p_v.end());
+	}
+	inline float min() {
+		return *min_element(p_v.begin(), p_v.end());
+	}
+	void set(float min, float max, std::mt19937 &rng = n_random_seed) {
+		std::uniform_real_distribution<float> uniform_dist(min, max);
+		for (int p = 0; p < xwxhxcxn; p++) {
+			p_v[p] = uniform_dist(rng);
+		}
+	}
+
+	void set(float min, float max, float cmin, float cmax, float multi, float add);
+	void set(string init_method = "xavier", std::mt19937 &rng = n_random_seed);
+	void set_borders(int border_width, float border_value);
+	void print(bool print_values = false);
+	void rotate(int cy, int cx, int angle_degree, float out_bound_value = 0);
+	void translate(int th = 0, int tw = 0, float out_bound_value = 0);
+}; // N C H W // N C H W
+
+

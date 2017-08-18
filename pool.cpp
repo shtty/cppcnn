@@ -5,6 +5,10 @@ pool::pool(void)
 {
 	pool_type = "max";
 	n_name = pool_type + "_pool";
+	n_pool.h = 2;
+	n_pool.w = 2;
+	n_stride.h = 2;
+	n_stride.w = 2;
 }
 
 
@@ -24,13 +28,10 @@ void pool::load_init(ifstream &myfile, string layer_type ) {
 	myfile >> stemp; // "stride"
 	myfile >> n_stride.h;
 	myfile >> n_stride.w;
-	myfile >> stemp; // "pad"
-	myfile >> n_pad.h;
-	myfile >> n_pad.w;
 }
 void pool::save_init(ofstream &myfile) {
 	myfile << endl;
-	myfile<<"pool "<<pool_type<<" "<<n_pool.h<<" "<<n_pool.w<<" stride "<<n_stride.h<<" "<<n_stride.w<<" pad "<<n_pad.h<<" "<<n_pad.w<<endl;
+	myfile<<"pool "<<pool_type<<" "<<n_pool.h<<" "<<n_pool.w<<" stride "<<n_stride.h<<" "<<n_stride.w <<endl;
 }
 
 double pool::forward_pass() {
