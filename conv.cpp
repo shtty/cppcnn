@@ -1,4 +1,7 @@
-﻿#include "conv.h"
+﻿////////////////////////////////////////////////////////////////////////////////////
+////		This code is written by Ho Yub Jung                                 ////
+////////////////////////////////////////////////////////////////////////////////////
+#include "conv.h"
 
 conv::conv(void)
 {
@@ -55,8 +58,8 @@ conv& conv::operator=(const conv &cpy) {
 	n_name = cpy.n_name;
 	n_use_gpu = cpy.n_use_gpu;
 	n_d = cpy.n_d;
-	n_in1 = cpy.n_in1;
-	n_out1 = cpy.n_out1;
+	p_in1 = cpy.p_in1;
+	p_out1 = cpy.p_out1;
 	//leak; n_pool;
 	n_stride = cpy.n_stride;
 	n_pad = cpy.n_pad;
@@ -152,10 +155,10 @@ void conv::print( bool print_n_rsp) {
 
 double conv::forward_pass() {
 	if (n_use_gpu) {
-		forward_pass_gpu(n_in1);
+		forward_pass_gpu(p_in1);
 	}
 	else {
-		forward_pass_cpu(n_in1);
+		forward_pass_cpu(p_in1);
 	}
 	return 0;
 }
@@ -208,12 +211,12 @@ void	conv::forward_pass_cpu(layer *rsps) {
 }
 double conv::backward_pass() {
 	if (n_use_gpu) {
-		backward_pass_gpu(n_in1, n_out1);
+		backward_pass_gpu(p_in1, p_out1);
 	}
 	else {
-		backward_pass_cpu(n_in1, n_out1);
+		backward_pass_cpu(p_in1, p_out1);
 	}
-	update_bias(n_out1);
+	update_bias(p_out1);
 	
 	////// set max and min gradients 
 	std::uniform_real_distribution<float> uniform_dist(0, 1);

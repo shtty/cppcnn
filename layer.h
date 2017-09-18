@@ -1,3 +1,6 @@
+////////////////////////////////////////////////////////////////////////////////////
+////		This code is written by Ho Yub Jung                                 ////
+////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "float4d.h"
 
@@ -6,7 +9,7 @@ class layer
 public:
 	string n_name;
 	bool   n_use_gpu;
-	layer *n_in1, *n_out1;
+	layer *p_in1, *p_out1;
 	float4d n_rsp, n_dif; // layer response, layer chain multiplier
 	
 	layer(void);	

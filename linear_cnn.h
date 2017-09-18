@@ -1,3 +1,6 @@
+////////////////////////////////////////////////////////////////////////////////////
+////		This code is written by Ho Yub Jung                                 ////
+////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <stdio.h>
 #include "layer.h"
@@ -9,16 +12,6 @@
 #include "c4to2x2.h"
 
 
-
-//class mylink {
-//private:
-//	int size;
-//public:
-//
-//	layer *ptr;
-//	layer *
-//};
-
 class linear_cnn
 {
 private:
@@ -26,6 +19,7 @@ private:
 public:
 	vector<layer*> n_layers;
 
+	float4d n_rsp;
 	float n_d;
 	int n_batch_size;
 	int n_max_epoch;
@@ -58,6 +52,8 @@ public:
 		for (int i = 0; i < n_layers.size(); i++ ) {
 			avg_error = n_layers[i]->forward_pass();
 		}
+		//// the last layer is the error
+		n_rsp = n_layers[n_layers.size() - 2]->n_rsp;
 		return avg_error;
 	}
 	double backward_pass() {

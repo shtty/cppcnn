@@ -1,3 +1,7 @@
+////////////////////////////////////////////////////////////////////////////////////
+////		This code is written by Ho Yub Jung                                 ////
+////////////////////////////////////////////////////////////////////////////////////
+
 #include "pool.h"
 
 
@@ -35,7 +39,7 @@ void pool::save_init(ofstream &myfile) {
 }
 
 double pool::forward_pass() {
-	size4d isize = n_in1->n_rsp.size();
+	size4d isize = p_in1->n_rsp.size();
 	isize.h /= n_stride.h;
 	isize.w /= n_stride.w;
 	n_rsp.resize(isize);
@@ -43,7 +47,7 @@ double pool::forward_pass() {
 	//cout << "pool rsp size NCHW " << n_rsp.n() << " " << n_rsp.c() << " " << n_rsp.h() << " " << n_rsp.w() << endl;
 
 	n_rsp.set(-FLT_MAX);
-	isize = n_in1->n_rsp.size();
+	isize = p_in1->n_rsp.size();
 
 	for (int pn = 0; pn < isize.n; pn++) { // per each image
 		for (int pc = 0; pc < isize.c; pc++) { // per each channel
@@ -54,11 +58,11 @@ double pool::forward_pass() {
 					for (int mh = ph; mh < ph + n_pool.h && mh < isize.h; mh++) {
 						for (int mw = pw; mw < pw + n_pool.w && mw < isize.w; mw++) {
 							float in_rsp;
-							in_rsp = n_in1->n_rsp(pn, pc, mh, mw);
+							in_rsp = p_in1->n_rsp(pn, pc, mh, mw);
 							if (n_rsp(pn, pc, rh, rw) < in_rsp) {
 								n_rsp(pn, pc, rh, rw) = in_rsp;
 								// needed for backward pass only
-								n_backward_idx(pn, pc, rh, rw) = float(n_in1->n_rsp.nchw2idx(pn, pc, mh, mw));
+								n_backward_idx(pn, pc, rh, rw) = float(p_in1->n_rsp.nchw2idx(pn, pc, mh, mw));
 							}
 						}
 					}
@@ -84,10 +88,10 @@ double pool::forward_pass() {
 }
 
 double pool::backward_pass() {
-	n_dif.resize(n_in1->n_rsp.size());
+	n_dif.resize(p_in1->n_rsp.size());
 	n_dif.set(0);
 	for (int p = 0; p < n_rsp.nchw(); p++) {
-		n_dif(int(n_backward_idx(p))) += n_out1->n_dif(p);
+		n_dif(int(n_backward_idx(p))) += p_out1->n_dif(p);
 	}
 	return 0;
 }

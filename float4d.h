@@ -1,3 +1,6 @@
+////////////////////////////////////////////////////////////////////////////////////
+////		This code is written by Ho Yub Jung                                 ////
+////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #define SHTTY_CUDNN
 
@@ -26,6 +29,9 @@ public:
 	inline bool operator!=(size4d in) {
 		if (n == in.n && c == in.c && h == in.h && w == in.w) { return true; }
 		return false;
+	}
+	bool operator==( size4d other) {
+		return n == other.n && c == other.c && h == other.h && w == other.w;
 	}
 };
 class size2d {
@@ -126,31 +132,39 @@ public:
 	inline int c() { return n_size.c; }
 	inline int n() { return n_size.n; }
 	
-	inline void set(float value, int nidx) {
-		std::fill(p_v.begin() + nidx*xwxhxc, p_v.begin() + nidx*xwxhxc + xwxhxc, value);
-	}
-	inline void set(float value, int nidx, int cidx) {
-		std::fill(p_v.begin() + nidx*xwxhxc + cidx*xwxh, p_v.begin() + nidx*xwxhxc + cidx*xwxh + xwxh, value);
-	}
-	inline void set(float value) { 
-		std::fill(p_v.begin(), p_v.end(), value); 
-	}
-	inline float max() {
-		return *max_element(p_v.begin(), p_v.end());
-	}
-	inline float min() {
-		return *min_element(p_v.begin(), p_v.end());
-	}
+	inline void set(float value, int nidx) { std::fill(p_v.begin() + nidx*xwxhxc, p_v.begin() + nidx*xwxhxc + xwxhxc, value); }
+	inline void set(float value, int nidx, int cidx) { std::fill(p_v.begin() + nidx*xwxhxc + cidx*xwxh, p_v.begin() + nidx*xwxhxc + cidx*xwxh + xwxh, value); }
+	inline void set(float value) { std::fill(p_v.begin(), p_v.end(), value);  }
+	inline float max() { return *max_element(p_v.begin(), p_v.end()); }
+	inline float min() { return *min_element(p_v.begin(), p_v.end()); }
 	void set(float min, float max, std::mt19937 &rng = n_random_seed) {
 		std::uniform_real_distribution<float> uniform_dist(min, max);
 		for (int p = 0; p < xwxhxcxn; p++) {
 			p_v[p] = uniform_dist(rng);
 		}
 	}
+	float sum() {
+		float allsum = 0;
+		for (int p = 0; p < xwxhxcxn; p++) { allsum += p_v[p]; }
+		return allsum;
+	}
+	float avg(float4d weights = float4d()) {
+		if (weights.n_size == this->n_size) {
+			float allsum = 0;
+			float allweight = 0;
+			for (int p = 0; p < xwxhxcxn; p++) {
+				allsum += p_v[p] * weights[p];
+				allweight += weights[p];
+			}
+			return allsum / allweight;
+		}
+		return sum() / float(this->xwxhxcxn);
+	}
 
 	void set(float min, float max, float cmin, float cmax, float multi, float add);
 	void set(string init_method = "xavier", std::mt19937 &rng = n_random_seed);
 	void set_borders(int border_width, float border_value);
+	
 	void print(bool print_values = false);
 	void rotate(int cy, int cx, int angle_degree, float out_bound_value = 0);
 	void translate(int th = 0, int tw = 0, float out_bound_value = 0);

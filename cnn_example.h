@@ -1,3 +1,6 @@
+////////////////////////////////////////////////////////////////////////////////////
+////		This code is written by Ho Yub Jung                                 ////
+////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <stdio.h>
 #include "linear_cnn.h"
@@ -305,12 +308,6 @@ void cnn_example_using_linear_cnn_simple() {
 	// set parameters on the layers
 	// some parameters are default values at the constructor
 	data_temp.n_rsp.resize(2, 2, 4, 4);
-	for (int i = 0; i < data_temp.n_rsp.nchw() / 2; i++) {
-		data_temp.n_rsp(i) = float(i % 2);
-	}
-	for (int i = data_temp.n_rsp.nchw() / 2; i < data_temp.n_rsp.nchw(); i++) {
-		data_temp.n_rsp(i) = float(i % 3);
-	}
 	cnn.push_back(data_temp);
 
 	conv_temp.n_weights_bias_set(4, 2, 3, 3);

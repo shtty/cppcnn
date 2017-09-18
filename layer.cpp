@@ -1,23 +1,26 @@
+////////////////////////////////////////////////////////////////////////////////////
+////		This code is written by Ho Yub Jung                                 ////
+////////////////////////////////////////////////////////////////////////////////////
 #include "layer.h"
 
 layer::layer(void)
 {
 	n_name = "layer";
 	n_use_gpu = true;
-	n_in1  = NULL; 
-	n_out1 = NULL;
+	p_in1  = NULL; 
+	p_out1 = NULL;
 }
 layer::~layer(void)
 {
 }
 
 void layer::set_input(layer &in_layer) {
-	n_in1 = &in_layer;
-	in_layer.n_out1 = this;
+	p_in1 = &in_layer;
+	in_layer.p_out1 = this;
 }
 void layer::set_output(layer &out_layer) {
-	n_out1 = &out_layer;
-	out_layer.n_in1 = this;
+	p_out1 = &out_layer;
+	out_layer.p_in1 = this;
 }
 
 void layer::load_init(ifstream &myfile, string layer_type ) {
