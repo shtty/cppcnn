@@ -10,22 +10,28 @@
 #include "sqr_error.h"
 #include "sqr_error_010.h"
 #include "c4to2x2.h"
+#include "fully.h"
+#include "cross_entrophy.h"
+#include "residual.h"
 
 
 class linear_cnn
 {
 private:
-
+	
 public:
 	vector<layer*> n_layers;
 
 	float4d n_rsp;
 	float n_d;
+	float n_validation_proportion;
 	int n_batch_size;
 	int n_max_epoch;
 	bool  n_use_gpu;
 	int n_epoch_idx;
+	int n_min_epoch;
 	double n_error;
+	double n_min_val_error;
 	string n_save_folder;
 	string n_history_file_name;
 	string n_current_cnn_name;
@@ -40,10 +46,22 @@ public:
 
 	void optimize(vector<float4d> &db_imgs, vector<float4d> &db_gts,
 		vector<int> &train_idx, vector<int> &valid_idx, bool load_from_previous = false);
+	void optimize( vector<float4d> &training_imgs, vector<float4d> &training_gts, bool load_from_previous = false );
 	bool save_cnn(string path = "" , int epoch = 0, double error = DBL_MAX );
 	bool load_cnn(string path = "" );
 	void print(bool print_all_values = false);
 
+	void forward_pass_test() {
+		set_links();
+		set_n_d(n_d);
+		use_gpu(n_use_gpu);
+		double avg_error = 0;
+		for (int i = 0; i < n_layers.size()-1; i++) {
+			avg_error = n_layers[i]->forward_pass();
+		}
+		//// the last layer is the error
+		n_rsp = n_layers[n_layers.size() - 2]->n_rsp;
+	}
 	double forward_pass( ) {
 		set_links();
 		set_n_d(n_d);
@@ -56,9 +74,9 @@ public:
 		n_rsp = n_layers[n_layers.size() - 2]->n_rsp;
 		return avg_error;
 	}
-	double backward_pass() {
+	double backward_pass( bool update_weights = true ) {
 		for (int i = n_layers.size() - 1; i >= 0; i--) {
-			n_layers[i]->backward_pass();
+			n_layers[i]->backward_pass(update_weights);
 		}
 		return 0;
 	}
@@ -83,7 +101,7 @@ public:
 	void	set_n_d(float d = 0.01f) {
 		n_d = d;
 		for (int i = 1; i < n_layers.size(); i++) {
-			n_layers[i]->set_gradient_step_size(d);
+			n_layers[i]->set_gradient_step_size(n_d);
 		}
 	}
 	void	use_gpu(bool ugpu = true) {

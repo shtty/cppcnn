@@ -16,11 +16,11 @@ public:
 	
 	void save_init(ofstream &myfile) {
 		myfile << endl;
-		myfile << "sqr_error_010 size_NCHW " << n_rsp.n() << " " << n_rsp.c() << " " << n_rsp.h() << " " << n_rsp.w() << endl;
+		myfile << "sqr_error_010 size_NCHW " << n_rsp.n() << " " << n_rsp.c() << " " << n_rsp.h() << " " << n_rsp.w() << " " << endl;
 	}
 
 	double forward_pass();
-	double backward_pass();
+	double backward_pass(bool update_weights = true);
 
 	void print(bool print_n_rsp = false) {
 		layer::print(print_n_rsp);

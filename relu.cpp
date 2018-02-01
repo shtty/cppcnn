@@ -26,7 +26,7 @@ void relu::load_init(ifstream &myfile, string layer_type ) {
 }
 void relu::save_init(ofstream &myfile) {
 	myfile << endl;
-	myfile << "relu leak " << n_leak << endl;
+	myfile << "relu leak " << n_leak << " " << endl;
 }
 
 double relu::forward_pass() {
@@ -45,7 +45,7 @@ double relu::forward_pass() {
 }
 
 
-double relu::backward_pass() {
+double relu::backward_pass(bool update_weights) {
 	n_dif.resize(n_rsp.size());
 	for (int t = 0; t < n_dif.nchw() ; t++) {
 		if (n_rsp(t) > 0) {

@@ -6,8 +6,7 @@
 conv::conv(void)
 {
 	n_name = "conv";
-	n_pad.h = 0;
-	n_pad.w = 0;
+	n_zero_padding = true;
 	n_stride.h = 1;
 	n_stride.w = 1;
 	n_d = 0.01f;
@@ -52,7 +51,11 @@ conv::conv(const conv &cpy) : layer(cpy) {
 	n_bias = cpy.n_bias;
 	n_bias_gradient = cpy.n_bias_gradient;
 	n_weights_gradient = cpy.n_weights_gradient;	
-	conv();
+	conv(); // for initializing cudnn variables.
+	n_name = cpy.n_name;
+	n_zero_padding = cpy.n_zero_padding;
+	n_stride = cpy.n_stride;
+	n_d = cpy.n_d;
 }
 conv& conv::operator=(const conv &cpy) {
 	n_name = cpy.n_name;
@@ -62,7 +65,7 @@ conv& conv::operator=(const conv &cpy) {
 	p_out1 = cpy.p_out1;
 	//leak; n_pool;
 	n_stride = cpy.n_stride;
-	n_pad = cpy.n_pad;
+	n_zero_padding = cpy.n_zero_padding;
 	n_rsp = cpy.n_rsp;
 	n_dif = cpy.n_dif; // layer response, layer chain multiplier
 
@@ -82,9 +85,9 @@ void conv::load_init(ifstream &myfile, string layer_type) {
 	myfile >> stemp; // "stride"
 	myfile >> n_stride.h;
 	myfile >> n_stride.w;
-	myfile >> stemp; // "pad"
-	myfile >> n_pad.h;
-	myfile >> n_pad.w;
+	myfile >> stemp; // "zero_padding"
+	myfile >> stemp; // "true" or "false"
+	n_zero_padding = stemp == "true" ? true : false;
 
 	int itemp;
 	myfile >> stemp; // "weight_dim"
@@ -101,8 +104,14 @@ void conv::load_init(ifstream &myfile, string layer_type) {
 }
 void conv::save_init(ofstream &myfile) {
 	myfile << endl ;
-	myfile << "conv stride " << n_stride.h << " " << n_stride.w << " pad " << n_pad.h << " " << n_pad.w << endl;
-	myfile << "weight_dim " << 4 << " size_NCHW " << n_weights.n() << " " << n_weights.c() << " " << n_weights.h() << " " << n_weights.w() << endl;
+	myfile << "conv stride " << n_stride.h << " " << n_stride.w << " zero_padding ";
+	if (n_zero_padding) {
+		myfile << "true " << endl;
+	}
+	else {
+		myfile << "false " << endl;
+	}
+	myfile << "weight_dim " << 4 << " size_NCHW " << n_weights.n() << " " << n_weights.c() << " " << n_weights.h() << " " << n_weights.w() << " "<< endl;
 
 }
 void conv::n_weights_bias_set(int n, int c, int h, int w) {
@@ -167,11 +176,9 @@ void	conv::forward_pass_cpu(layer *rsps) {
 	rsize = rsps->n_rsp.size();
 	int pad_h = n_weights.h() / 2;
 	int pad_w = n_weights.w() / 2;
-	if (n_pad.h == 0) {
+	if ( !n_zero_padding ) {
 		rsize.h -= (n_weights.h() - 1);
 		pad_h = 0;
-	}
-	if (n_pad.w == 0) {
 		rsize.w -= (n_weights.w() - 1);
 		pad_w = 0;
 	}
@@ -209,14 +216,16 @@ void	conv::forward_pass_cpu(layer *rsps) {
 	int stop = 1;
 	
 }
-double conv::backward_pass() {
+double conv::backward_pass(bool update_weights ) {
 	if (n_use_gpu) {
 		backward_pass_gpu(p_in1, p_out1);
 	}
 	else {
 		backward_pass_cpu(p_in1, p_out1);
 	}
-	update_bias(p_out1);
+	if (update_weights) {
+		update_bias(p_out1);
+	}
 	
 	////// set max and min gradients 
 	std::uniform_real_distribution<float> uniform_dist(0, 1);
@@ -233,8 +242,10 @@ double conv::backward_pass() {
 		//}
 	}
 	////// update filter weights
-	for (int p = 0; p < n_weights.nchw(); p++) {
-		n_weights(p) = n_weights(p) - n_d*n_weights_gradient(p);
+	if (update_weights) {
+		for (int p = 0; p < n_weights.nchw(); p++) {
+			n_weights(p) = n_weights(p) - n_d*n_weights_gradient(p);
+		}
 	}
 	return 0;
 }
@@ -245,8 +256,10 @@ void		conv::update_gradient_cpu(layer *inlayer, layer *outlayer) {
 	stride_w = int(n_stride.w);
 	int pad_h = n_weights.h() / 2;
 	int pad_w = n_weights.w() / 2;
-	if (n_pad.h == 0) { pad_h = 0; }
-	if (n_pad.w == 0) { pad_w = 0; }
+	if ( !n_zero_padding ) { 
+		pad_h = 0; 
+		pad_w = 0; 
+	}
 	n_weights_gradient.resize(n_weights.size());
 	n_weights_gradient.set(0);
 
@@ -273,8 +286,10 @@ void		conv::update_gradient_cpu(layer *inlayer, layer *outlayer) {
 void	conv::backward_pass_cpu(layer *inlayer, layer *outlayer) {
 	int pad_h = n_weights.h() / 2;
 	int pad_w = n_weights.w() / 2;
-	if (n_pad.h == 0) { pad_h = 0; }
-	if (n_pad.w == 0) { pad_w = 0; }
+	if ( !n_zero_padding ) { 
+		pad_h = 0; 
+		pad_w = 0; 
+	}
 	
 	n_dif.resize( inlayer->n_rsp.size() );
 	n_dif.set(0);
@@ -334,8 +349,10 @@ void conv::forward_pass_gpu(layer *rsps) {
 #ifdef SHTTY_CUDNN
 	int pad_h = n_weights.h() / 2;
 	int pad_w = n_weights.w() / 2;
-	if (n_pad.h == 0) { pad_h = 0; }
-	if (n_pad.w == 0) { pad_w = 0; }
+	if (!n_zero_padding) {
+		pad_h = 0;
+		pad_w = 0;
+	}
 
 	int IW, IH, IC, IN;
 	int FW, FH, FC, FN;

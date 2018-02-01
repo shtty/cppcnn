@@ -14,6 +14,6 @@ public:
 	void save_init(ofstream &myfile);
 	
 	double forward_pass();
-	double backward_pass();
+	double backward_pass(bool update_weights = true);
 };
 

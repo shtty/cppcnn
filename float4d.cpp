@@ -34,14 +34,13 @@ void float4d::set(string init_method, std::mt19937 &rng) {
 		float min = -d;
 		set(min, max,rng);
 	}
-	if (init_method == "pass") {
+	else if (init_method == "pass") {
 		set("xavier");
 		int ch = n_size.h / 2;
 		int cw = n_size.w / 2;
 		set(0, 0);
 		this->operator()(0, 0, ch, cw) = 1;
-	}
-	
+	}	
 }
 void float4d::set_borders(int border_width, float border_value) {
 	for (int n = 0; n < n_size.n; n++) {

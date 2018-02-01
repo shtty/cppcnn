@@ -37,7 +37,7 @@ double sqr_error_010::forward_pass() {
 	return avg_error;
 }
 
-double sqr_error_010::backward_pass() {
+double sqr_error_010::backward_pass(bool update_weights ) {
 	n_dif.resize(p_in1->n_rsp.size());
 	double all_one_sum = 0;
 	for (int p = 0; p < n_rsp.nchw(); p++) {

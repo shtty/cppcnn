@@ -35,7 +35,7 @@ void pool::load_init(ifstream &myfile, string layer_type ) {
 }
 void pool::save_init(ofstream &myfile) {
 	myfile << endl;
-	myfile<<"pool "<<pool_type<<" "<<n_pool.h<<" "<<n_pool.w<<" stride "<<n_stride.h<<" "<<n_stride.w <<endl;
+	myfile<<"pool "<<pool_type<<" "<<n_pool.h<<" "<<n_pool.w<<" stride "<<n_stride.h<<" "<<n_stride.w << " " <<endl;
 }
 
 double pool::forward_pass() {
@@ -87,7 +87,7 @@ double pool::forward_pass() {
 	return 0;
 }
 
-double pool::backward_pass() {
+double pool::backward_pass(bool update_weights ) {
 	n_dif.resize(p_in1->n_rsp.size());
 	n_dif.set(0);
 	for (int p = 0; p < n_rsp.nchw(); p++) {

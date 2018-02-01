@@ -36,8 +36,7 @@ void cnn_example_using_layer() {
 		data1.n_rsp(i) = float(i % 3);
 	}
 	conv1.n_weights_bias_set(16, 2, 3, 3);
-	conv1.n_pad.set(1, 1);
-	conv1.n_stride.set(1, 1);
+	conv1.n_zero_padding = true;
 
 	pool1.n_pool.set(2, 2);
 	pool1.n_stride.set(2, 2);
@@ -48,13 +47,13 @@ void cnn_example_using_layer() {
 	//resize 4 channel into 1 chanel 2x2
 
 	conv2.n_weights_bias_set(16, 4, 3, 3);
-	conv2.n_pad.set(1, 1);
+	conv2.n_zero_padding = true;
 	conv2.n_stride.set(1, 1);
 
 	relu2.n_leak = 0.0f;
 
 	conv3.n_weights_bias_set(2, 16, 3, 3);
-	conv3.n_pad.set(1, 1);
+	conv3.n_zero_padding = true;
 	conv3.n_stride.set(1, 1);
 
 	error.n_rsp = data1.n_rsp;
@@ -165,7 +164,7 @@ void cnn_example_using_linear_cnn() {
 	cnn.push_back(data_temp);
 
 	conv_temp.n_weights_bias_set(4, 2, 3, 3);
-	conv_temp.n_pad.set(1, 1);
+	conv_temp.n_zero_padding = true;
 	conv_temp.n_stride.set(1, 1);
 	conv_temp.n_use_gpu = true;
 	cnn.push_back(conv_temp);
@@ -181,7 +180,7 @@ void cnn_example_using_linear_cnn() {
 	cnn.push_back(upsc_temp);
 
 	conv_temp.n_weights_bias_set(2,1, 3, 3);
-	conv_temp.n_pad.set(1, 1);
+	conv_temp.n_zero_padding = true;
 	conv_temp.n_stride.set(1, 1);
 	conv_temp.n_use_gpu = true;
 	cnn.push_back(conv_temp);
@@ -190,7 +189,7 @@ void cnn_example_using_linear_cnn() {
 	cnn.push_back(relu_temp);
 
 	conv_temp.n_weights_bias_set(2, 2, 3, 3);
-	conv_temp.n_pad.set(1, 1);
+	conv_temp.n_zero_padding = true;
 	conv_temp.n_stride.set(1, 1);
 	conv_temp.n_use_gpu = true;
 	cnn.push_back(conv_temp);
@@ -293,7 +292,7 @@ void data_augument( float4d &image, float4d &ground_truth ) {
 	// add noise to the input image
 	// no changes in gorund truth
 }
-void cnn_example_using_linear_cnn_simple() {
+void cnn_example_using_linear_cnn_simple( bool load_from_previous = true) {
 	linear_cnn cnn;
 
 	//// a simple generative model test
@@ -311,7 +310,7 @@ void cnn_example_using_linear_cnn_simple() {
 	cnn.push_back(data_temp);
 
 	conv_temp.n_weights_bias_set(4, 2, 3, 3);
-	conv_temp.n_pad.set(1, 1);
+	conv_temp.n_zero_padding = true;
 	conv_temp.n_stride.set(1, 1);
 	conv_temp.n_use_gpu = true;
 	cnn.push_back(conv_temp);
@@ -327,7 +326,7 @@ void cnn_example_using_linear_cnn_simple() {
 	cnn.push_back(upsc_temp);
 
 	conv_temp.n_weights_bias_set(2, 1, 3, 3);
-	conv_temp.n_pad.set(1, 1);
+	conv_temp.n_zero_padding = true;
 	conv_temp.n_stride.set(1, 1);
 	conv_temp.n_use_gpu = true;
 	cnn.push_back(conv_temp);
@@ -336,7 +335,7 @@ void cnn_example_using_linear_cnn_simple() {
 	cnn.push_back(relu_temp);
 
 	conv_temp.n_weights_bias_set(2, 2, 3, 3);
-	conv_temp.n_pad.set(1, 1);
+	conv_temp.n_zero_padding = true;
 	conv_temp.n_stride.set(1, 1);
 	conv_temp.n_use_gpu = true;
 	cnn.push_back(conv_temp);
@@ -387,7 +386,7 @@ void cnn_example_using_linear_cnn_simple() {
 	cnn.n_max_epoch = 64;
 	cnn.data_augument_function = &data_augument;
 
-	cnn.optimize(training_images, training_groundtruths, train_idx, valid_idx, true);
+	cnn.optimize(training_images, training_groundtruths, train_idx, valid_idx, load_from_previous );
 	
 	cnn.load_cnn(cnn.n_save_folder + cnn.n_min_cnn_name);
 	cnn.print();

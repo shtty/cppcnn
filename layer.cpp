@@ -37,7 +37,7 @@ void layer::load_init(ifstream &myfile, string layer_type ) {
 	n_rsp.resize(N, C, H, W);
 }
 void layer::save_init(ofstream &myfile) {
-	myfile << "layer size_NCHW " << n_rsp.n() << " " << n_rsp.c() << " " << n_rsp.h() << " " << n_rsp.w() << endl;
+	myfile << "layer size_NCHW " << n_rsp.n() << " " << n_rsp.c() << " " << n_rsp.h() << " " << n_rsp.w() << " " <<endl;
 }
 void layer::print(bool print_values ) {
 	cout << "printing layer " << n_name << endl;

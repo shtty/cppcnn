@@ -4,7 +4,9 @@
 #pragma once
 #include "float4d.h"
 
-class layer
+
+
+class layer 
 {
 public:
 	string n_name;
@@ -17,6 +19,7 @@ public:
 	void set_output(layer &out_layer);
 	
 	virtual ~layer(void);
+	
 	virtual string layer_type() { return "layer"; }
 	virtual void load_init(ifstream &myfile, string layer_type = "");
 	virtual void save_init(ofstream &myfile);
@@ -24,11 +27,13 @@ public:
 	virtual void save_weights(ofstream &myfile) {}
 	virtual void print(bool print_values = false);
 
-	virtual void forward_pass(layer *rsps) {}
-	virtual void backward_pass(layer *input, layer *output) {}
-	virtual void backward_pass(layer *rsps) {}
+	//virtual void forward_pass(layer *rsps) {}
+	//virtual void backward_pass(layer *input, layer *output) {}
+	//virtual void backward_pass(layer *rsps) {}
+	//double forward_pass() { return 0; }
+	//double backward_pass(bool update_weights = true) { return 0; }
 	virtual double forward_pass() { return 0; }
-	virtual double backward_pass() { return 0; }
+	virtual double backward_pass(bool update_weights = true) { return 0; }
 	
 	virtual void set_gradient_step_size(float d) {}
 	virtual void n_weights_bias_set(int n, int c, int h, int w) {}

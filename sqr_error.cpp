@@ -18,7 +18,7 @@ double sqr_error::forward_pass() {
 	all_error_for_batch = 0;
 	int nchw = p_in1->n_rsp.nchw();
 	if (nchw != n_rsp.nchw()) {
-		cout << "nchw of response and sqr_error_011 does not match, using smaller nchw..." << endl;
+		cout << "nchw of response and sqr_error does not match, using smaller nchw..." << endl;
 		if (nchw > n_rsp.nchw()) {
 			nchw = n_rsp.nchw();
 		}
@@ -32,7 +32,7 @@ double sqr_error::forward_pass() {
 	return avg_error;
 }
 
-double sqr_error::backward_pass() {
+double sqr_error::backward_pass(bool update_weights ) {
 	n_dif.resize(p_in1->n_rsp.size());
 	float inv_psize = 1 / float(n_dif.nchw());
 	for (int p = 0; p < n_dif.nchw(); p++) {

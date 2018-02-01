@@ -15,11 +15,14 @@ linear_cnn::linear_cnn()
 
 	
 	n_d = 0.01f;
+	n_validation_proportion = 1; // validation error = train_error(1-n_validation_proportion) + valdiation_error*n_validation_proportion
 	n_batch_size = 2;
 	n_max_epoch = 8;
 	n_use_gpu = true;
 	n_error = DBL_MAX;
 	n_epoch_idx = 0;
+	n_min_epoch = 0;
+	n_min_val_error = DBL_MAX;
 
 	data_augument_function = NULL;
 	show_progress_function = NULL;
@@ -115,6 +118,21 @@ bool linear_cnn::load_cnn(string path) {
 				temp_c4to1.load_init(myfile, type);
 				push_back(temp_c4to1);
 			}
+			else if (!type.compare("fully")) {
+				fully temp_fully;
+				temp_fully.load_init(myfile, type);
+				push_back(temp_fully);
+			}
+			else if (!type.compare("cross_entrophy")) {
+				cross_entrophy temp_cross_entrophy_error;
+				temp_cross_entrophy_error.load_init(myfile, type);
+				push_back(temp_cross_entrophy_error);
+			}
+			else if (!type.compare("residual")) {
+				residual temp_residual;
+				temp_residual.load_init(myfile, type);
+				push_back(temp_residual);
+			}
 			else { // "layer"
 				layer temp_layer;
 				temp_layer.load_init(myfile, type);
@@ -147,13 +165,10 @@ void linear_cnn::print(bool print_all_values) {
 
 void linear_cnn::optimize(vector<float4d> &db_imgs, vector<float4d> &db_gts,
 	                      vector<int> &train_idx, vector<int> &valid_idx, bool load_from_previous ) {
-
-	double min_val_error = DBL_MAX; // minimum validation error
-	int min_epoch = 0;
 	if (load_from_previous) {
 		load_cnn(n_save_folder + n_min_cnn_name);
-		min_val_error = n_error;
-		min_epoch = n_epoch_idx;
+		n_min_val_error = n_error;
+		n_min_epoch = n_epoch_idx;
 		load_cnn(n_save_folder + n_current_cnn_name);
 		print(); cout << endl;
 	}
@@ -202,11 +217,12 @@ void linear_cnn::optimize(vector<float4d> &db_imgs, vector<float4d> &db_gts,
 		double avg_train_error = sum_avg_error / training_size;
 		cout << endl;
 		cout << avg_train_error << " average training error during optimization." << endl;
-		cout << "calculating error from validation set " << endl;
+		
 
 		////// 
 		double avg_verror = 0;
 		if (validation_size > 0) {
+			cout << "calculating error from validation set " << endl;
 			sum_avg_error = 0;
 			for (int b = 0; b < validation_size; b += n_batch_size) {
 				int nsize = n_batch_size;
@@ -227,16 +243,51 @@ void linear_cnn::optimize(vector<float4d> &db_imgs, vector<float4d> &db_gts,
 					}
 				}
 				sum_avg_error += forward_pass()*nsize;
+				cout << "  " << b << "/" << validation_size << " ";
 			}
 			avg_verror = sum_avg_error / validation_size;
-			if (min_val_error > avg_verror) {
-				min_val_error = avg_verror;
-				min_epoch = n_epoch_idx;
+			if (n_min_val_error > avg_verror) {
+				n_min_val_error = avg_verror;
+				n_min_epoch = n_epoch_idx;
 				save_cnn(n_save_folder + n_min_cnn_name, n_epoch_idx, avg_verror);
 			}
 			cout << endl;
 			cout << avg_verror << " validation error (avg)." << endl;
-			cout << min_val_error << " min validation error (avg) at epoch " << min_epoch << endl << endl;
+			cout << n_min_val_error << " min validation error (avg) at epoch " << n_min_epoch << endl << endl;
+		}
+		else {
+			cout << "calculating error from unagumented training set " << endl;
+			sum_avg_error = 0;
+			for (int b = 0; b < training_size; b += n_batch_size) {
+				int nsize = n_batch_size;
+				if (b + n_batch_size > training_size) {
+					nsize = training_size - b;
+				}
+				n_layers.front()->n_rsp.resize(nsize, db_imgs[0].c(), db_imgs[0].h(), db_imgs[0].w());
+				n_layers.back()->n_rsp.resize(nsize, db_gts[0].c(), db_gts[0].h(), db_gts[0].w());
+				for (int i = 0; i < nsize; i++) {
+					int idx = train_idx[b + i];
+					float4d temp_img = db_imgs[idx];
+					float4d temp_gts = db_gts[idx];
+					for (int p = 0; p < temp_img.chw(); p++) {
+						n_layers.front()->n_rsp(i, p) = temp_img(0, p);
+					}
+					for (int p = 0; p < temp_gts.chw(); p++) {
+						n_layers.back()->n_rsp(i, p) = temp_gts(0, p);
+					}
+				}
+				sum_avg_error += forward_pass()*nsize;
+				cout << "  " << b << "/" << training_size << " ";
+			}
+			avg_verror = sum_avg_error / training_size;
+			if (n_min_val_error > avg_verror) {
+				n_min_val_error = avg_verror;
+				n_min_epoch = n_epoch_idx;
+				save_cnn(n_save_folder + n_min_cnn_name, n_epoch_idx, avg_verror);
+			}
+			cout << endl;
+			cout << avg_verror << " unaugmented training error (avg)." << endl;
+			cout << n_min_val_error << " min unaugumented training error (avg) at epoch " << n_min_epoch << endl << endl;
 		}
 		save_cnn(n_save_folder + n_current_cnn_name, n_epoch_idx, avg_verror);
 
@@ -252,4 +303,148 @@ void linear_cnn::optimize(vector<float4d> &db_imgs, vector<float4d> &db_gts,
 		outfile << n_history;
 		outfile.close();
 	}
+}
+
+
+void linear_cnn::optimize(vector<float4d> &training_imgs, vector<float4d> &training_gts, bool load_from_previous) {
+	//double min_val_error = DBL_MAX; // minimum validation error
+	//int min_epoch = 0;
+	//if (load_from_previous) {
+	//	load_cnn(n_save_folder + n_min_cnn_name);
+	//	min_val_error = n_error;
+	//	min_epoch = n_epoch_idx;
+	//	load_cnn(n_save_folder + n_current_cnn_name);
+	//	print(); cout << endl;
+	//}
+
+	//int training_size = train_idx.size();
+	//int validation_size = valid_idx.size();
+
+	//cout << "max epoch is " << n_max_epoch << endl << endl;
+	//while (n_epoch_idx < n_max_epoch) {
+	//	n_epoch_idx++;
+	//	std::random_shuffle(train_idx.begin(), train_idx.end());
+
+	//	cout << n_epoch_idx << " epoch, optimizing training set" << endl;
+	//	double sum_avg_error = 0;
+	//	for (int b = 0; b < training_size; b += n_batch_size) {
+
+	//		int nsize = n_batch_size;
+	//		if (b + n_batch_size > training_size) {
+	//			nsize = training_size - b;
+	//		}
+	//		n_layers.front()->n_rsp.resize(nsize, db_imgs[0].c(), db_imgs[0].h(), db_imgs[0].w());
+	//		n_layers.back()->n_rsp.resize(nsize, db_gts[0].c(), db_gts[0].h(), db_gts[0].w());
+	//		for (int i = 0; i < nsize; i++) {
+	//			int idx = train_idx[b + i];
+	//			float4d temp_img = db_imgs[idx];
+	//			float4d temp_gts = db_gts[idx];
+
+	//			if (data_augument_function != NULL) {
+	//				data_augument_function(temp_img, temp_gts);
+	//			}
+	//			for (int p = 0; p < temp_img.chw(); p++) {
+	//				n_layers.front()->n_rsp(i, p) = temp_img(0, p);
+	//			}
+	//			for (int p = 0; p < temp_gts.chw(); p++) {
+	//				n_layers.back()->n_rsp(i, p) = temp_gts(0, p);
+	//			}
+	//		}
+	//		sum_avg_error += optimize()*nsize;
+	//		cout << "  " << b << "/" << training_size << " ";
+	//	}
+	//	if (show_progress_function != NULL) {
+	//		show_progress_function(n_layers);
+	//	};
+
+
+	//	double avg_train_error = sum_avg_error / training_size;
+	//	cout << endl;
+	//	cout << avg_train_error << " average training error during optimization." << endl;
+
+
+	//	////// 
+	//	double avg_verror = 0;
+	//	if (validation_size > 0) {
+	//		cout << "calculating error from validation set " << endl;
+	//		sum_avg_error = 0;
+	//		for (int b = 0; b < validation_size; b += n_batch_size) {
+	//			int nsize = n_batch_size;
+	//			if (b + n_batch_size > validation_size) {
+	//				nsize = validation_size - b;
+	//			}
+	//			n_layers.front()->n_rsp.resize(nsize, db_imgs[0].c(), db_imgs[0].h(), db_imgs[0].w());
+	//			n_layers.back()->n_rsp.resize(nsize, db_gts[0].c(), db_gts[0].h(), db_gts[0].w());
+	//			for (int i = 0; i < nsize; i++) {
+	//				int idx = valid_idx[b + i];
+	//				float4d temp_img = db_imgs[idx];
+	//				float4d temp_gts = db_gts[idx];
+	//				for (int p = 0; p < temp_img.chw(); p++) {
+	//					n_layers.front()->n_rsp(i, p) = temp_img(0, p);
+	//				}
+	//				for (int p = 0; p < temp_gts.chw(); p++) {
+	//					n_layers.back()->n_rsp(i, p) = temp_gts(0, p);
+	//				}
+	//			}
+	//			sum_avg_error += forward_pass()*nsize;
+	//			cout << "  " << b << "/" << validation_size << " ";
+	//		}
+	//		avg_verror = sum_avg_error / validation_size;
+	//		if (min_val_error > avg_verror) {
+	//			min_val_error = avg_verror;
+	//			min_epoch = n_epoch_idx;
+	//			save_cnn(n_save_folder + n_min_cnn_name, n_epoch_idx, avg_verror);
+	//		}
+	//		cout << endl;
+	//		cout << avg_verror << " validation error (avg)." << endl;
+	//		cout << min_val_error << " min validation error (avg) at epoch " << min_epoch << endl << endl;
+	//	}
+	//	else {
+	//		cout << "calculating error from unagumented training set " << endl;
+	//		sum_avg_error = 0;
+	//		for (int b = 0; b < training_size; b += n_batch_size) {
+	//			int nsize = n_batch_size;
+	//			if (b + n_batch_size > training_size) {
+	//				nsize = training_size - b;
+	//			}
+	//			n_layers.front()->n_rsp.resize(nsize, db_imgs[0].c(), db_imgs[0].h(), db_imgs[0].w());
+	//			n_layers.back()->n_rsp.resize(nsize, db_gts[0].c(), db_gts[0].h(), db_gts[0].w());
+	//			for (int i = 0; i < nsize; i++) {
+	//				int idx = train_idx[b + i];
+	//				float4d temp_img = db_imgs[idx];
+	//				float4d temp_gts = db_gts[idx];
+	//				for (int p = 0; p < temp_img.chw(); p++) {
+	//					n_layers.front()->n_rsp(i, p) = temp_img(0, p);
+	//				}
+	//				for (int p = 0; p < temp_gts.chw(); p++) {
+	//					n_layers.back()->n_rsp(i, p) = temp_gts(0, p);
+	//				}
+	//			}
+	//			sum_avg_error += forward_pass()*nsize;
+	//			cout << "  " << b << "/" << training_size << " ";
+	//		}
+	//		avg_verror = sum_avg_error / training_size;
+	//		if (min_val_error > avg_verror) {
+	//			min_val_error = avg_verror;
+	//			min_epoch = n_epoch_idx;
+	//			save_cnn(n_save_folder + n_min_cnn_name, n_epoch_idx, avg_verror);
+	//		}
+	//		cout << endl;
+	//		cout << avg_verror << " unaugmented training error (avg)." << endl;
+	//		cout << min_val_error << " min unaugumented training error (avg) at epoch " << min_epoch << endl << endl;
+	//	}
+	//	save_cnn(n_save_folder + n_current_cnn_name, n_epoch_idx, avg_verror);
+
+	//	//// update history and save history
+	//	n_history += std::to_string(n_epoch_idx);
+	//	n_history += " ";
+	//	n_history += std::to_string(avg_train_error);
+	//	n_history += " ";
+	//	n_history += std::to_string(avg_verror);
+	//	n_history += "\n";
+	//	string history_path = n_save_folder + n_history_file_name;
+	//	std::ofstream outfile(history_path);
+	//	outfile << n_history;
+	//	outfile.close();
+	//}
 }

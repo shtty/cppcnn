@@ -7,7 +7,7 @@
 
 c4to2x2::c4to2x2(void)
 {
-	n_name = "c4to2x2";
+	n_name = "c4to2x2 ";
 }
 
 
@@ -51,7 +51,7 @@ double c4to2x2::forward_pass() {
 }
 
 
-double c4to2x2::backward_pass() {
+double c4to2x2::backward_pass(bool update_weights) {
 	n_dif.resize(p_in1->n_rsp.size());
 	for (int pn = 0; pn < n_dif.n(); pn++) { // per each image sample
 	for (int pc = 0; pc < n_dif.c(); pc++) { // per each channel

@@ -27,8 +27,7 @@ public:
 	}
 	inline int nchw() { return  n*c*h*w; }
 	inline bool operator!=(size4d in) {
-		if (n == in.n && c == in.c && h == in.h && w == in.w) { return true; }
-		return false;
+		return !(n == in.n && c == in.c && h == in.h && w == in.w);
 	}
 	bool operator==( size4d other) {
 		return n == other.n && c == other.c && h == other.h && w == other.w;
@@ -117,16 +116,29 @@ public:
 	inline float & operator[](int p) { return p_v[p]; }
 	inline float & operator()(int n, int c, int h, int w) { return p_v[nchw2idx(n, c, h, w)]; }
 	inline float & operator()(int n, int p ) { return p_v[n*xwxhxc + p]; }
+	inline float & operator()(int n, int c, int p) { return p_v[n*xwxhxc + c*xwxh + p]; }
 	float4d & operator+=(float v) {
 		for (int i = 0; i < xwxhxcxn; i++) {
 			p_v[i] += v;
 		}
 		return *this;
 	}
+	bool operator==( float4d &other) {
+		if (n_size != other.size()) {
+			return false;
+		}
+		for (int p = 0; p < xwxhxcxn; p++ ) {
+			if ( p_v[p] != other[p] ) {
+				return false;
+			}
+		}
+		return true;
+	}
 
 	inline size4d size() { return n_size; }
 	inline int nchw() { return xwxhxcxn; }
 	inline int  chw() { return xwxhxc  ; }
+	inline int   hw() { return xwxh; }
 	inline int w() { return n_size.w;  }
 	inline int h() { return n_size.h; }
 	inline int c() { return n_size.c; }
@@ -144,23 +156,56 @@ public:
 		}
 	}
 	float sum() {
-		float allsum = 0;
+		double allsum = 0;
 		for (int p = 0; p < xwxhxcxn; p++) { allsum += p_v[p]; }
-		return allsum;
+		return float(allsum);
 	}
 	float avg(float4d weights = float4d()) {
 		if (weights.n_size == this->n_size) {
-			float allsum = 0;
-			float allweight = 0;
+			double allsum = 0;
+			double allweight = 0;
 			for (int p = 0; p < xwxhxcxn; p++) {
 				allsum += p_v[p] * weights[p];
 				allweight += weights[p];
 			}
-			return allsum / allweight;
+			return float(allsum / allweight);
 		}
 		return sum() / float(this->xwxhxcxn);
 	}
+	void normalize( string method = "minmax") {
+		if ( method == "minmax" ) {
+			float cmin, cmax; ///// Minus Min, Divided by Max
+			cmin = this->min();
+			for (int p = 0; p < xwxhxcxn; p++) { p_v[p] -= cmin; }
+			cmax = this->max();
+			if ( cmax > 0 ) {
+				cmax = 1 / cmax;
+				for (int p = 0; p < xwxhxcxn; p++) { p_v[p] *= cmax; }
+			}
+		}
+		else if ( method.find("std") != string::npos ) {
+			double mean = avg();
+			double sqr_sum = 0;
+			for (int p = 0; p < xwxhxcxn; p++) {
+				sqr_sum += (p_v[p] -mean)*(p_v[p] - mean);
+			}
+			double std = sqrt(sqr_sum / double(xwxhxcxn));
+			for (int p = 0; p < xwxhxcxn; p++) {
+				p_v[p] = float( (p_v[p] - mean) / std );
+			}
 
+		}
+		else {
+			cout << "float4d::normalize: no implementation of normalize( " << method << " )" << endl;
+		}
+	}
+	void truncate( float min = 0, float max = 1) {
+		for (int p = 0; p < xwxhxcxn; p++) {
+			if (p_v[p] < min) { p_v[p] = min; }
+			if (p_v[p] > max) { p_v[p] = max; }
+		}
+
+	}
 	void set(float min, float max, float cmin, float cmax, float multi, float add);
 	void set(string init_method = "xavier", std::mt19937 &rng = n_random_seed);
 	void set_borders(int border_width, float border_value);
